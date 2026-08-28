@@ -1,0 +1,14 @@
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import reports from './routes/reports.js';
+import voice from './routes/voice.js';
+import {auth} from './middleware/auth.js';
+const app=express();
+app.use(helmet());app.use(cors({origin:process.env.FRONTEND_URL||'http://localhost:5173'}));app.use(express.json({limit:'1mb'}));
+app.get('/api/health',(req,res)=>res.json({ok:true,mode:process.env.DEMO_MODE==='true'?'DEMO':'REAL'}));
+app.use('/api/reports',auth,reports);
+app.use('/api/voice',auth,voice);
+app.use((err,req,res,next)=>{console.error(err);res.status(500).json({error:'Unexpected server error.'});});
+app.listen(Number(process.env.PORT)||5000,()=>console.log(`Backend running on http://localhost:${Number(process.env.PORT)||5000}`));

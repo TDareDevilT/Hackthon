@@ -1,0 +1,3 @@
+import express from 'express';import {parseVoice} from '../services/voice.js';
+const router=express.Router();
+router.post('/parse',async(req,res)=>{try{const transcript=String(req.body?.transcript||'').trim();if(!transcript||transcript.length<2)return res.status(400).json({error:'Please say a little more about your field.'});if(transcript.length>2000)return res.status(400).json({error:'Voice request is too long.'});const result=await parseVoice(transcript,req.body?.language||'en');res.json(result)}catch(e){console.error(e);res.status(500).json({error:'Unable to understand the voice request. Please try again.'})}});export default router;

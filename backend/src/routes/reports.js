@@ -1,0 +1,11 @@
+import express from 'express';
+import { validateInput } from '../utils/validation.js';
+import { generateReport } from '../services/gemini.js';
+import { getLocalWeather } from '../services/weather.js';
+const router=express.Router();
+router.use((req,res,next)=>{if(!req.user)return res.status(401).json({error:'Authentication required.'});next();});
+router.post('/',async(req,res)=>{try{const v=validateInput(req.body);if(!v.ok)return res.status(400).json({error:v.error});let liveWeather=null; try { liveWeather=await getLocalWeather(v.data.location); } catch { liveWeather=null; } const {report,mode}=await generateReport(v.data,liveWeather);if(!req.supabase)return res.json({id:crypto.randomUUID(),report,mode});const {data,error}=await req.supabase.from('climate_reports').insert({user_id:req.user.id,farm_name:v.data.farmName,location:v.data.location,crop:v.data.crop,crop_stage:v.data.cropStage,acreage:v.data.acreage||null,readings:v.data.readings,report}).select('id,created_at').single();if(error)throw error;res.json({id:data.id,createdAt:data.created_at,report,mode});}catch(e){console.error(e);res.status(500).json({error:e.message==='GEMINI_API_KEY is not configured.'?e.message:'Unable to generate the report right now. Please retry.'});}});
+router.get('/',async(req,res)=>{if(!req.supabase)return res.json([]);const {data,error}=await req.supabase.from('climate_reports').select('id,farm_name,location,crop,crop_stage,created_at,report').order('created_at',{ascending:false}).limit(25);if(error)return res.status(500).json({error:'Unable to load report history.'});res.json(data||[]);});
+router.get('/:id',async(req,res)=>{if(!req.supabase)return res.status(404).json({error:'Report history is unavailable in demo mode.'});const {data,error}=await req.supabase.from('climate_reports').select('*').eq('id',req.params.id).single();if(error)return res.status(404).json({error:'Report not found.'});res.json(data);});
+router.delete('/:id',async(req,res)=>{if(!req.supabase)return res.status(404).json({error:'Report history is unavailable in demo mode.'});const {error}=await req.supabase.from('climate_reports').delete().eq('id',req.params.id);if(error)return res.status(500).json({error:'Unable to delete report.'});res.json({ok:true});});
+export default router;
