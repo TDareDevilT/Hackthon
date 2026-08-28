@@ -1,0 +1,2 @@
+import {supabase} from './supabase';
+export async function api(path,options={}){const headers={'Content-Type':'application/json',...(options.headers||{})};if(supabase){const {data}=await supabase.auth.getSession();if(data.session)headers.Authorization=`Bearer ${data.session.access_token}`;}const r=await fetch(`${import.meta.env.VITE_API_URL||'http://localhost:5000'}${path}`,{...options,headers});const body=await r.json().catch(()=>({}));if(!r.ok)throw new Error(body.error||'Request failed');return body;}
